@@ -81,6 +81,27 @@ textarea{resize:vertical;min-height:108px;line-height:1.55}
 .note{display:flex;gap:10px;align-items:flex-start;margin-top:18px;padding:13px 15px;background:var(--primary-soft);
   border:1px solid hsl(203 60% 86%);border-radius:11px;font-size:12.5px;color:var(--primary-ink);line-height:1.55}
 
+/* ---------- Intro / how it works ---------- */
+.intro-title{font-weight:800;font-size:16.5px;letter-spacing:-.01em;margin:0 0 6px}
+.intro-lede{font-size:13.5px;color:var(--muted);line-height:1.6;margin:0 0 18px;max-width:700px}
+.intro-lede b{color:var(--ink);font-weight:600}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+@media(max-width:640px){.steps{grid-template-columns:1fr}}
+.step{display:flex;gap:11px;align-items:flex-start;background:hsl(210 30% 98%);border:1px solid var(--line);
+  border-radius:12px;padding:13px 14px}
+.snum{flex:0 0 auto;width:24px;height:24px;border-radius:8px;background:var(--primary-soft);color:var(--primary-ink);
+  font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+.step b{font-size:13px;display:block;margin-bottom:3px}
+.step p{font-size:12px;color:var(--muted);line-height:1.5;margin:0}
+.method{max-height:0;overflow:hidden;transition:max-height .3s ease}
+.method.open{max-height:600px}
+.method-inner{padding-top:16px}
+.mrow{display:flex;gap:10px;align-items:baseline;padding:5px 0;font-size:12.5px;line-height:1.5}
+.mrow b{flex:0 0 118px;color:var(--ink);font-weight:600}
+.mrow span{color:var(--muted)}
+.mnote{margin-top:12px;font-size:12px;color:var(--muted);line-height:1.55;background:var(--amber-soft);
+  border-radius:9px;padding:9px 12px;color:var(--amber)}
+
 /* ---------- Collapsible weights ---------- */
 .wpanel{padding:0;overflow:hidden}
 .whead{display:flex;align-items:center;justify-content:space-between;width:100%;background:none;border:0;
@@ -191,6 +212,18 @@ a.handle:hover{color:var(--primary-ink);border-bottom-color:var(--primary)}
 </div>
 
 <div class="wrap">
+  <div class="panel">
+    <p class="intro-title">Seed free cleans where they'll actually convert</p>
+    <p class="intro-lede">The play: you clean a creator's home free, they post about it, and their followers — <b>affluent, time-poor locals</b> — become your customers. A creator is only worth a free clean if their audience is that customer, so this tool finds and ranks them by audience fit, not follower count.</p>
+    <div class="steps">
+      <div class="step"><span class="snum">1</span><div><b>Search</b><p>Scans the live web for creators in your chosen segments and city — roundups, press, local features.</p></div></div>
+      <div class="step"><span class="snum">2</span><div><b>Score</b><p>Each creator gets six 0–100 scores on what predicts a booking-ready audience. Adjust the weights and the ranking re-sorts instantly.</p></div></div>
+      <div class="step"><span class="snum">3</span><div><b>Outreach</b><p>DM the top fits with the suggested angle, offer the free clean, export the list as CSV to track responses.</p></div></div>
+    </div>
+    <button class="linkbtn" onclick="toggleMethod()">Why these six scores? ▾</button>
+    <div class="method" id="methodBox"><div class="method-inner" id="methodList"></div></div>
+  </div>
+
   <div class="panel" id="discoverPanel">
     <label class="plabel">Segments to search — the customer lives beyond fitness</label>
     <div class="chips" id="segChips"></div>
@@ -292,6 +325,15 @@ function toggleWeights() {
   const open = p.classList.toggle("open");
   p.querySelector(".whead").setAttribute("aria-expanded", open);
 }
+function toggleMethod() { document.getElementById("methodBox").classList.toggle("open"); }
+
+// The methodology list is rendered from DIMS so it can never drift out of
+// sync with the actual scoring dimensions.
+function renderMethod() {
+  const el = document.getElementById("methodList");
+  el.innerHTML = DIMS.map(d => `<div class="mrow"><b>${d.label}</b><span>${d.hint}</span></div>`).join("")
+    + `<div class="mnote">Follower count is deliberately not a score — it only matters through local audience density, and a free clean is a weak incentive for huge accounts (that's what cost-fit penalizes). Default weights are a starting hypothesis; recalibrate them once you see which creators actually convert to bookings.</div>`;
+}
 
 function renderSegChips() {
   const el = document.getElementById("segChips");
@@ -314,30 +356,51 @@ function weightSummary() {
   return `custom — ${top.label.toLowerCase()} leads at ${Math.round((weights[top.key] / wsum) * 100)}%`;
 }
 
+// Built ONCE — never rebuilt on input. Rebuilding the grid mid-drag
+// destroys the slider under the pointer, which killed dragging entirely
+// (only discrete clicks worked). All live updates go through
+// updateWeightUI(), which mutates labels/fills in place.
 function renderWeights() {
   const grid = document.getElementById("weightGrid");
   grid.innerHTML = "";
-  const wsum = DIMS.reduce((a, d) => a + (weights[d.key] || 0), 0);
   DIMS.forEach(d => {
     const wrap = document.createElement("div");
     wrap.className = "w";
-    const pct = wsum ? Math.round((weights[d.key] / wsum) * 100) : 0;
-    wrap.innerHTML = `<div class="wlab"><b>${d.label}</b><span class="wpct">${pct}%</span></div>
-      <input type="range" min="0" max="40" value="${weights[d.key]}" data-key="${d.key}" style="--fill:${(weights[d.key] / 40) * 100}%">
+    wrap.innerHTML = `<div class="wlab"><b>${d.label}</b><span class="wpct"></span></div>
+      <input type="range" min="0" max="40" value="${weights[d.key]}" data-key="${d.key}">
       <span class="whint">${d.hint}</span>`;
     wrap.querySelector("input").addEventListener("input", (e) => {
-      weights[e.target.dataset.key] = Number(e.target.value);
-      renderWeights();
-      if (rawResults) renderResults();
+      weights[d.key] = Number(e.target.value);
+      updateWeightUI();
+      scheduleRerank();
     });
     grid.appendChild(wrap);
   });
+  updateWeightUI();
+}
+function updateWeightUI() {
+  const wsum = DIMS.reduce((a, d) => a + (weights[d.key] || 0), 0);
+  document.querySelectorAll("#weightGrid input[type=range]").forEach(inp => {
+    const k = inp.dataset.key;
+    if (Number(inp.value) !== weights[k]) inp.value = weights[k];
+    inp.style.setProperty("--fill", (weights[k] / 40) * 100 + "%");
+    const pct = wsum ? Math.round((weights[k] / wsum) * 100) : 0;
+    inp.closest(".w").querySelector(".wpct").textContent = pct + "%";
+  });
   document.getElementById("wsummary").textContent = weightSummary();
+}
+// Re-ranking rebuilds every result card, which is too heavy to run on every
+// pixel of a drag — coalesce to one re-render per frame.
+let rerankPending = false;
+function scheduleRerank() {
+  if (rerankPending || !rawResults) return;
+  rerankPending = true;
+  requestAnimationFrame(() => { rerankPending = false; if (rawResults) renderResults(false); });
 }
 function resetWeights() {
   weights = Object.fromEntries(DIMS.map(d => [d.key, d.def]));
-  renderWeights();
-  if (rawResults) renderResults();
+  updateWeightUI();
+  if (rawResults) renderResults(false);
 }
 
 function weighted(scores) {
@@ -428,7 +491,7 @@ function igLink(handle) {
   return /^[A-Za-z0-9._]{2,30}$/.test(clean) ? `https://www.instagram.com/${clean}/` : null;
 }
 
-function renderResults() {
+function renderResults(animate = true) {
   const el = document.getElementById("resultsArea");
   const allWeightsZero = DIMS.every(d => !weights[d.key]);
   if (allWeightsZero) {
@@ -449,7 +512,7 @@ function renderResults() {
     const handleHtml = r.handle && r.handle !== r.name
       ? (ig ? `<a class="handle" href="${ig}" target="_blank" rel="noopener" title="Open on Instagram">${esc(r.handle)} ↗</a>` : `<span class="handle">${esc(r.handle)}</span>`)
       : "";
-    html += `<div class="c" style="animation-delay:${Math.min(idx * 45, 400)}ms">
+    html += `<div class="c" style="${animate ? `animation-delay:${Math.min(idx * 45, 400)}ms` : "animation:none"}">
       <div class="score">
         <div class="sbadge" style="background:${v.bg};color:${v.fg}"><span class="n">${r.fit}</span><span class="l">fit</span></div>
         <span class="verdict" style="color:${v.fg}">${v.label}</span>
@@ -492,6 +555,7 @@ function downloadCSV() {
 
 renderSegChips();
 renderWeights();
+renderMethod();
 loadStatus();
 </script>
 </body>
