@@ -76,13 +76,15 @@ directly into `public/index.html` or any file you commit.
   needs a retry.
 - **The free tier is tighter than it sounds.** The binding limit isn't a
   generous monthly number — it's a small per-model daily/per-minute cap.
-  On a typical free account, `gemini-3-flash` is capped around **5
-  requests/minute and 20 requests/day**. Every Discover or Score click
-  uses one request, so that's roughly 20 searches a day, total, across
-  everyone using the deployed link. Check your real numbers anytime at
-  https://aistudio.google.com/rate-limit (sign in with the same Google
-  account you made the API key with). If you hit the daily cap, it resets
-  the next day — no fix needed, just wait.
+  This app defaults to `gemini-3.5-flash-lite`, chosen specifically because
+  it had the best free-tier daily budget available (**15 requests/minute,
+  500 requests/day** on a typical free account) — the non-Lite flash
+  models cap out around 20 requests/day, which is easy to burn through in
+  one testing session. Every Discover or Score click uses one request, so
+  500/day is shared across everyone using the deployed link. Check your
+  real numbers anytime at https://aistudio.google.com/rate-limit (sign in
+  with the same Google account you made the API key with). If you hit the
+  daily cap, it resets the next day — no fix needed, just wait.
 - **Not every model Google lists is actually usable on your account.**
   Many show `0/0` on that rate-limit page, meaning zero free quota —
   calling one of those fails immediately, every time, regardless of how

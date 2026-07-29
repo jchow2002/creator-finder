@@ -8,9 +8,11 @@
 // Free-tier limits are per-model and per-account, checkable at
 // https://aistudio.google.com/rate-limit — NOT all models a project can
 // "see" actually have nonzero quota (many show 0/0 and will 429 on the
-// very first call). gemini-3-flash was confirmed to have real quota
-// (5 RPM / 20 RPD) as of 2026-07-28; if you change the model, check that
-// dashboard first rather than assuming a name from Google's docs works.
+// very first call). gemini-3.5-flash-lite was confirmed to have real quota
+// (15 RPM / 500 RPD as of 2026-07-28 — the best free-tier daily budget of
+// any text model on this account; the non-Lite flash models cap out around
+// 20 RPD). If you change the model, check that dashboard first rather than
+// assuming a name from Google's docs works.
 // Get a free key at https://aistudio.google.com/apikey.
 //
 // No separate local process to run, so this deploys cleanly to a free host
@@ -32,7 +34,7 @@ app.use(express.static(path.join(__dirname, "public")));
 const CONFIG_PATH = path.join(__dirname, "config.json");
 function loadConfig() {
   if (process.env.GEMINI_API_KEY) {
-    return { geminiApiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || "gemini-3-flash" };
+    return { geminiApiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite" };
   }
   if (!fs.existsSync(CONFIG_PATH)) {
     throw new Error(
@@ -76,7 +78,7 @@ rationale <=22 words. hook = one specific outreach angle <=16 words. source = a 
 let requestsThisSession = 0;
 
 async function geminiGroundedCall(cfg, prompt) {
-  const model = cfg.model || "gemini-3-flash";
+  const model = cfg.model || "gemini-3.5-flash-lite";
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/interactions`, {
     method: "POST",
     headers: {
@@ -148,7 +150,7 @@ function extractJSON(text) {
 app.get("/api/status", (req, res) => {
   try {
     const cfg = loadConfig();
-    res.json({ model: cfg.model || "gemini-3-flash", requestsThisSession });
+    res.json({ model: cfg.model || "gemini-3.5-flash-lite", requestsThisSession });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
