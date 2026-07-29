@@ -106,11 +106,19 @@ founder to recalibrate for real.
 
 - No automated tests yet. `server.js` has been manually boot-tested
   (serves the frontend, fails gracefully with no Gemini key configured) but
-  not yet exercised against a real Gemini call with a live key — the
-  `/v1beta/interactions` response-parsing logic in `geminiGroundedCall()`
-  (which step type holds the text, where citations live) is based on
-  Google's documented shape as of 2026-07-28, not a confirmed live response.
-  If parsing misbehaves, log the raw response body first.
+  not yet exercised end-to-end against a real Gemini call — the first two
+  live attempts both failed before reaching the parser: `gemini-2.5-flash`
+  404'd ("no longer available to new users"), then the `gemini-flash-latest`
+  alias 429'd on its very first call because it silently resolved to a
+  model with zero quota on this account. Confirmed the fix by checking
+  https://aistudio.google.com/rate-limit directly rather than trusting
+  Google's docs or model-name conventions — that dashboard is the only
+  reliable source for which models actually have nonzero quota on a given
+  account. The `/v1beta/interactions` response-parsing logic in
+  `geminiGroundedCall()` (which step type holds the text, where citations
+  live) is still based on documented shape, not a confirmed live response —
+  if parsing misbehaves once a call actually succeeds, log the raw response
+  body first.
 - No persistence — every run is stateless; nothing is saved between
   sessions. A "saved shortlist" or pipeline-tracking view (DM'd → booked →
   posted) has been discussed as a possible future addition but isn't built.

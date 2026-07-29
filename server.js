@@ -3,10 +3,15 @@
 // The browser never talks to any AI provider directly — it only talks to
 // this server, and this server talks to the Gemini API. Uses Gemini's
 // built-in Google Search grounding tool, so search and scoring happen in a
-// single call instead of two separate ones. Free tier: 5,000 grounded
-// prompts/month shared across Gemini 3 models (see
-// https://ai.google.dev/gemini-api/docs/pricing), plenty for this app's
-// usage. Get a free key at https://aistudio.google.com/apikey.
+// single call instead of two separate ones.
+//
+// Free-tier limits are per-model and per-account, checkable at
+// https://aistudio.google.com/rate-limit — NOT all models a project can
+// "see" actually have nonzero quota (many show 0/0 and will 429 on the
+// very first call). gemini-3-flash was confirmed to have real quota
+// (5 RPM / 20 RPD) as of 2026-07-28; if you change the model, check that
+// dashboard first rather than assuming a name from Google's docs works.
+// Get a free key at https://aistudio.google.com/apikey.
 //
 // No separate local process to run, so this deploys cleanly to a free host
 // like Render or Railway — see README.
@@ -27,7 +32,7 @@ app.use(express.static(path.join(__dirname, "public")));
 const CONFIG_PATH = path.join(__dirname, "config.json");
 function loadConfig() {
   if (process.env.GEMINI_API_KEY) {
-    return { geminiApiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || "gemini-flash-latest" };
+    return { geminiApiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || "gemini-3-flash" };
   }
   if (!fs.existsSync(CONFIG_PATH)) {
     throw new Error(
@@ -71,7 +76,7 @@ rationale <=22 words. hook = one specific outreach angle <=16 words. source = a 
 let requestsThisSession = 0;
 
 async function geminiGroundedCall(cfg, prompt) {
-  const model = cfg.model || "gemini-flash-latest";
+  const model = cfg.model || "gemini-3-flash";
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/interactions`, {
     method: "POST",
     headers: {
@@ -143,7 +148,7 @@ function extractJSON(text) {
 app.get("/api/status", (req, res) => {
   try {
     const cfg = loadConfig();
-    res.json({ model: cfg.model || "gemini-flash-latest", requestsThisSession });
+    res.json({ model: cfg.model || "gemini-3-flash", requestsThisSession });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

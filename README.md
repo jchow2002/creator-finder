@@ -74,12 +74,21 @@ directly into `public/index.html` or any file you commit.
 - **Quality is good but not Claude-level.** Gemini's free tier is solid for
   this kind of task, but expect occasional messy output or a run that
   needs a retry.
-- **The free tier has real limits.** Search-grounded requests are capped
-  at roughly 5,000/month shared across Gemini's current models (Google
-  changes this from time to time — check
-  https://ai.google.dev/gemini-api/docs/pricing if something stops
-  working). For a tool one person uses to prospect a handful of creators
-  at a time, that's generous headroom.
+- **The free tier is tighter than it sounds.** The binding limit isn't a
+  generous monthly number — it's a small per-model daily/per-minute cap.
+  On a typical free account, `gemini-3-flash` is capped around **5
+  requests/minute and 20 requests/day**. Every Discover or Score click
+  uses one request, so that's roughly 20 searches a day, total, across
+  everyone using the deployed link. Check your real numbers anytime at
+  https://aistudio.google.com/rate-limit (sign in with the same Google
+  account you made the API key with). If you hit the daily cap, it resets
+  the next day — no fix needed, just wait.
+- **Not every model Google lists is actually usable on your account.**
+  Many show `0/0` on that rate-limit page, meaning zero free quota —
+  calling one of those fails immediately, every time, regardless of how
+  the model is marketed. If you ever change `GEMINI_MODEL` / the `model`
+  field in `config.json`, check the rate-limit dashboard first to confirm
+  it shows a real (nonzero) limit before assuming the name works.
 - **This is still a seed list, not verified audience data.** The "local
   audience" score is the model's estimate from what it finds via search,
   not real Instagram Insights data.
