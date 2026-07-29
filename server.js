@@ -27,7 +27,7 @@ app.use(express.static(path.join(__dirname, "public")));
 const CONFIG_PATH = path.join(__dirname, "config.json");
 function loadConfig() {
   if (process.env.GEMINI_API_KEY) {
-    return { geminiApiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || "gemini-2.5-flash" };
+    return { geminiApiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || "gemini-flash-latest" };
   }
   if (!fs.existsSync(CONFIG_PATH)) {
     throw new Error(
@@ -62,7 +62,7 @@ rationale <=22 words. hook = one specific outreach angle <=16 words. source = a 
 // https://ai.google.dev/gemini-api/docs/google-search
 // ---------------------------------------------------------------------------
 async function geminiGroundedCall(cfg, prompt) {
-  const model = cfg.model || "gemini-2.5-flash";
+  const model = cfg.model || "gemini-flash-latest";
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/interactions`, {
     method: "POST",
     headers: {
