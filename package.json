@@ -1,0 +1,15 @@
+{
+  "name": "creator-finder-app",
+  "version": "1.0.0",
+  "description": "Local or hosted creator prospecting + scoring tool, powered by the Gemini API's free tier with Google Search grounding (no Claude usage spent).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

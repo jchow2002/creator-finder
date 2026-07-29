@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Creator Finder</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+:root{
+  --paper:#F5F8FA;--card:#FFFFFF;--ink:#151C2E;--muted:#5B6472;--line:#E1E6EA;
+  --primary:#3B9BDB;--primary-ink:#1D5D82;--primary-soft:#EAF4FC;
+  --hot:#D9513B;--hot-soft:#FBEAE5;
+  --amber:#B7791F;--amber-soft:#FBF3E2;--grey:#8A97A3;
+  --shadow:0 1px 2px rgba(21,28,46,.04),0 1px 12px rgba(21,28,46,.05);
+}
+*{box-sizing:border-box}
+body{font-family:'Inter',system-ui,-apple-system,sans-serif;color:var(--ink);background:var(--paper);
+  margin:0;padding:36px 22px 64px}
+.wrap{max-width:920px;margin:0 auto}
+.head{display:flex;align-items:flex-start;gap:14px;margin-bottom:4px}
+.mark{flex:0 0 auto;width:40px;height:40px;border-radius:10px;background:var(--primary);display:flex;
+  align-items:center;justify-content:center;color:#fff;font-weight:700;box-shadow:var(--shadow)}
+h1{font-family:'Inter',sans-serif;font-weight:700;font-size:25px;letter-spacing:-.01em;margin:0}
+.sub{color:var(--muted);font-size:13.5px;margin:4px 0 0;max-width:600px;line-height:1.5}
+.modes{display:flex;gap:6px;margin:24px 0 16px;background:#EAF0F4;padding:4px;border-radius:11px;width:fit-content}
+.mode{border:0;background:transparent;font-family:inherit;font-weight:600;font-size:13.5px;color:var(--muted);
+  padding:8px 16px;border-radius:8px;cursor:pointer}
+.mode.on{background:var(--card);color:var(--ink);box-shadow:var(--shadow)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;margin-bottom:14px;
+  box-shadow:var(--shadow)}
+.plabel{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.01em;margin:0 0 9px;display:block}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.seg{font-family:inherit;font-size:13px;font-weight:500;border:1px solid var(--line);background:#FBFCFD;
+  color:var(--ink);border-radius:999px;padding:7px 14px;cursor:pointer}
+.seg.on{background:var(--primary);border-color:var(--primary);color:#fff}
+.row{display:flex;gap:16px;flex-wrap:wrap}
+.field{display:flex;flex-direction:column;gap:6px;flex:1;min-width:180px}
+input,textarea,select{font-family:inherit;font-size:14px;color:var(--ink);background:#FBFCFD;border:1px solid var(--line);
+  border-radius:8px;padding:10px 12px;outline:none;width:100%}
+input:focus,textarea:focus,select:focus{border-color:var(--primary);background:#fff}
+textarea{resize:vertical;min-height:104px;line-height:1.5}
+.linkbtn{font-family:inherit;background:none;border:0;color:var(--primary-ink);font-size:12.5px;font-weight:600;
+  cursor:pointer;padding:6px 0 0;text-decoration:underline}
+.run{margin-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.btn{font-family:inherit;font-weight:600;font-size:14px;border:0;border-radius:8px;padding:11px 22px;
+  cursor:pointer;background:var(--primary);color:#fff;box-shadow:var(--shadow)}
+.btn:hover{background:var(--primary-ink)}.btn:disabled{opacity:.55;cursor:not-allowed}
+.hintline{font-size:12.5px;color:var(--muted)}
+.note{display:flex;gap:9px;align-items:flex-start;margin-top:16px;padding:12px 14px;background:var(--primary-soft);
+  border-radius:10px;font-size:12.5px;color:var(--primary-ink);line-height:1.5}
+.wtop{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px}
+.wreset{font-family:inherit;background:none;border:0;color:var(--muted);font-size:12px;font-weight:600;
+  cursor:pointer;text-decoration:underline}
+.wsub{font-size:12px;color:var(--muted);margin:0 0 14px}
+.wgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px 22px}
+@media(max-width:600px){.wgrid{grid-template-columns:1fr}}
+.w{display:flex;flex-direction:column;gap:3px}
+.wlab{display:flex;align-items:baseline;justify-content:space-between;font-size:12.5px}
+.wlab b{font-weight:600}
+.wpct{font-family:'Inter',sans-serif;font-weight:600;color:var(--primary-ink);font-size:12.5px}
+.whint{font-size:11px;color:var(--grey);line-height:1.3}
+input[type=range]{-webkit-appearance:none;appearance:none;height:4px;border-radius:3px;background:var(--line);
+  outline:none;margin:5px 0 2px;padding:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+  background:var(--primary);cursor:pointer;border:2px solid #fff;box-shadow:0 0 0 1px var(--primary)}
+.status{margin:26px 0;text-align:center;color:var(--muted);font-size:14px}
+.spin{display:inline-block;width:15px;height:15px;border:2px solid var(--line);border-top-color:var(--primary);
+  border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;margin-right:8px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.err{background:var(--hot-soft);color:#8f2f20;border-radius:10px;padding:14px 16px;font-size:13.5px;line-height:1.5}
+.rhead{display:flex;align-items:baseline;justify-content:space-between;margin:28px 2px 12px;gap:12px;flex-wrap:wrap}
+.count{font-family:'Inter',sans-serif;font-weight:700;font-size:16px}
+.exports{display:flex;gap:8px}
+.chip{font-family:inherit;font-size:12.5px;font-weight:600;border:1px solid var(--line);background:#fff;
+  border-radius:8px;padding:7px 12px;cursor:pointer;color:var(--ink)}
+.chip:hover{border-color:var(--primary);color:var(--primary-ink)}
+.cards{display:flex;flex-direction:column;gap:12px}
+.c{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:16px 17px;display:grid;
+  grid-template-columns:56px 1fr;gap:15px;align-items:start;box-shadow:var(--shadow)}
+.score{width:56px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.sbadge{width:56px;height:56px;border-radius:12px;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;font-family:'Inter',sans-serif}
+.sbadge .n{font-weight:700;font-size:20px;line-height:1}
+.sbadge .l{font-size:8.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;opacity:.75;margin-top:2px}
+.verdict{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;text-align:center}
+.crow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.name{font-family:'Inter',sans-serif;font-weight:700;font-size:15.5px}
+.handle{color:var(--muted);font-size:13px}
+.tag{font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:5px;background:#EEF2F5;color:var(--muted)}
+.tag.macro{background:var(--amber-soft);color:var(--amber)}
+.tag.seg{background:var(--primary-soft);color:var(--primary-ink)}
+.meta{color:var(--grey);font-size:12px;margin:5px 0 10px;display:flex;gap:12px;flex-wrap:wrap}
+.bars{display:grid;grid-template-columns:repeat(3,1fr);gap:8px 14px;margin:0 0 11px}
+@media(max-width:520px){.bars{grid-template-columns:repeat(2,1fr)}}
+.bar .bl{display:flex;justify-content:space-between;font-size:10.5px;color:var(--muted);margin-bottom:3px}
+.bar .bl b{font-weight:600;color:var(--ink)}
+.track{height:4px;border-radius:3px;background:#EEF2F5;overflow:hidden}
+.fill{height:100%;border-radius:3px;background:var(--primary)}
+.rat{font-size:13.5px;line-height:1.5;color:#2A343A;margin:0 0 8px}
+.hook{font-size:13px;line-height:1.5;background:var(--primary-soft);border-left:2px solid var(--primary);border-radius:0 7px 7px 0;
+  padding:8px 11px;color:var(--primary-ink)}
+.flag{font-size:12px;line-height:1.45;margin-top:8px;color:var(--amber);background:var(--amber-soft);
+  border-radius:7px;padding:7px 10px}
+.src a{color:var(--muted);text-decoration:underline;font-size:12px}
+.lowconf{font-size:11px;color:var(--grey);font-style:italic}
+.empty{text-align:center;color:var(--grey);font-size:13.5px;padding:34px 12px;border:1px dashed var(--line);
+  border-radius:12px}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;
+  font-size:13px;font-weight:500;padding:10px 18px;border-radius:9px;z-index:20;box-shadow:var(--shadow)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="mark">✦</div>
+    <div>
+      <h1>Creator Finder</h1>
+      <p class="sub">Powered by Gemini's free tier, with built-in Google Search grounding — no Claude usage spent. Tune the weights and the ranking re-sorts live.</p>
+    </div>
+  </div>
+
+  <div class="modes">
+    <button class="mode on" id="modeDiscoverBtn" onclick="setMode('discover')">Discover new</button>
+    <button class="mode" id="modeScoreBtn" onclick="setMode('score')">Score my list</button>
+  </div>
+
+  <div class="panel" id="discoverPanel">
+    <label class="plabel">Segments to search — the customer lives beyond fitness</label>
+    <div class="chips" id="segChips"></div>
+    <div class="row">
+      <div class="field" style="flex:0 0 200px">
+        <label class="plabel" style="margin:0">City / market</label>
+        <input id="cityInput" value="New York City" />
+      </div>
+      <div class="field">
+        <label class="plabel" style="margin:0">Tier focus</label>
+        <select id="tierSelect">
+          <option value="Prefer micro creators (5k-30k) — efficient, local, likely to post.">Mostly micro</option>
+          <option value="Mix of creator sizes.">Balanced</option>
+          <option value="Include one larger/macro creator as a reach and credibility play.">Include macro</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="scorePanel" style="display:none">
+    <label class="plabel">Paste creators — one per line</label>
+    <textarea id="pasteArea" placeholder="@tommcgeefit — NYC fitness/nutrition coach, ~126k&#10;@nook.nyc — small-space apartment styling, ~24k"></textarea>
+    <button class="linkbtn" onclick="loadExample()">Load an example</button>
+  </div>
+
+  <div class="panel" id="runPanel">
+    <div class="run">
+      <button class="btn" id="runBtn" onclick="runSearch()">Find creators</button>
+      <span class="hintline" id="runHint">Returns up to 4 ranked candidates</span>
+    </div>
+    <div class="note">◔ <span><b>Sourcing:</b> real web search via Gemini's Google Search grounding, scored in the same pass. Still a free-tier model — treat results as a seed list, verify before outreach, and expect occasional weaker reasoning than a paid model would give.</span></div>
+  </div>
+
+  <div class="panel">
+    <div class="wtop">
+      <label class="plabel" style="margin:0">Scoring weights</label>
+      <button class="wreset" onclick="resetWeights()">Reset to default</button>
+    </div>
+    <p class="wsub">Starting hypothesis — recalibrate once you have real booking conversion data.</p>
+    <div class="wgrid" id="weightGrid"></div>
+  </div>
+
+  <div id="statusArea"></div>
+  <div id="resultsArea"></div>
+</div>
+<div id="toast" class="toast" style="display:none"></div>
+
+<script>
+const DIMS = [
+  { key: "local", label: "Local audience", hint: "% of followers in target city", def: 30 },
+  { key: "income", label: "Income fit", hint: "audience looks affluent enough to pay for premium cleaning", def: 20 },
+  { key: "native", label: "Content native", hint: "shows their home; a clean-home post fits their feed", def: 15 },
+  { key: "engagement", label: "Engagement", hint: "real engagement + comment authenticity", def: 15 },
+  { key: "activation", label: "Cost-fit", hint: "is a free clean a big enough incentive to post well", def: 10 },
+  { key: "eco", label: "Eco fit", hint: "sustainability leaning amplifies the differentiator", def: 10 },
+];
+const SEGMENTS = ["Fitness", "Home & interiors", "NYC lifestyle", "Food & hosting", "Finance / career", "Wellness", "Eco living"];
+const EXAMPLE = "@tommcgeefit — NYC fitness/nutrition coach, ~126k\n@lena.moves — Brooklyn fitness, ~18k, home workouts\n@nook.nyc — small-space apartment styling, ~24k\n@sundays.in.soho — NYC lifestyle + cafes, ~11k";
+
+let mode = "discover";
+let segments = ["Fitness", "Home & interiors", "NYC lifestyle"];
+let weights = Object.fromEntries(DIMS.map(d => [d.key, d.def]));
+let rawResults = null;
+
+function setMode(m) {
+  mode = m;
+  document.getElementById("modeDiscoverBtn").classList.toggle("on", m === "discover");
+  document.getElementById("modeScoreBtn").classList.toggle("on", m === "score");
+  document.getElementById("discoverPanel").style.display = m === "discover" ? "block" : "none";
+  document.getElementById("scorePanel").style.display = m === "score" ? "block" : "none";
+  document.getElementById("runBtn").textContent = m === "discover" ? "Find creators" : "Score list";
+  document.getElementById("runHint").textContent = m === "discover" ? "Returns up to 4 ranked candidates" : "Best with ≤ 6 at a time";
+  rawResults = null;
+  document.getElementById("resultsArea").innerHTML = "";
+  document.getElementById("statusArea").innerHTML = "";
+}
+function loadExample() { document.getElementById("pasteArea").value = EXAMPLE; }
+
+function renderSegChips() {
+  const el = document.getElementById("segChips");
+  el.innerHTML = "";
+  SEGMENTS.forEach(s => {
+    const b = document.createElement("button");
+    b.className = "seg" + (segments.includes(s) ? " on" : "");
+    b.textContent = s;
+    b.onclick = () => { segments = segments.includes(s) ? segments.filter(x => x !== s) : [...segments, s]; renderSegChips(); };
+    el.appendChild(b);
+  });
+}
+function renderWeights() {
+  const grid = document.getElementById("weightGrid");
+  grid.innerHTML = "";
+  const wsum = DIMS.reduce((a, d) => a + (weights[d.key] || 0), 0);
+  DIMS.forEach(d => {
+    const wrap = document.createElement("div");
+    wrap.className = "w";
+    const pct = wsum ? Math.round((weights[d.key] / wsum) * 100) : 0;
+    wrap.innerHTML = `<div class="wlab"><b>${d.label}</b><span class="wpct">${pct}%</span></div>
+      <input type="range" min="0" max="40" value="${weights[d.key]}" data-key="${d.key}">
+      <span class="whint">${d.hint}</span>`;
+    wrap.querySelector("input").addEventListener("input", (e) => {
+      weights[e.target.dataset.key] = Number(e.target.value);
+      renderWeights();
+      if (rawResults) renderResults();
+    });
+    grid.appendChild(wrap);
+  });
+}
+function resetWeights() { weights = Object.fromEntries(DIMS.map(d => [d.key, d.def])); renderWeights(); if (rawResults) renderResults(); }
+
+function weighted(scores) {
+  let wsum = 0, tot = 0;
+  DIMS.forEach(d => { const w = weights[d.key] || 0; wsum += w; tot += w * (Number(scores?.[d.key]) || 0); });
+  return wsum ? Math.round(tot / wsum) : 0;
+}
+function verdictFor(n) {
+  if (n >= 75) return { label: "Hot pick", bg: "var(--hot-soft)", fg: "var(--hot)" };
+  if (n >= 60) return { label: "Strong", bg: "var(--primary-soft)", fg: "var(--primary-ink)" };
+  if (n >= 40) return { label: "Maybe", bg: "var(--amber-soft)", fg: "var(--amber)" };
+  return { label: "Skip", bg: "#EEF1F3", fg: "var(--grey)" };
+}
+function flash(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.style.display = "block";
+  setTimeout(() => t.style.display = "none", 2200);
+}
+
+async function runSearch() {
+  const btn = document.getElementById("runBtn");
+  btn.disabled = true;
+  document.getElementById("statusArea").innerHTML = `<div class="status"><span class="spin"></span>${mode === "discover" ? "Searching and scoring…" : "Checking and scoring your list…"}</div>`;
+  document.getElementById("resultsArea").innerHTML = "";
+  try {
+    let body, url;
+    if (mode === "discover") {
+      if (!segments.length) throw new Error("Pick at least one segment.");
+      url = "/api/discover";
+      body = { segments, city: document.getElementById("cityInput").value || "New York City", tierNote: document.getElementById("tierSelect").value };
+    } else {
+      const list = document.getElementById("pasteArea").value;
+      if (!list.trim()) throw new Error("Paste at least one creator.");
+      url = "/api/score";
+      body = { list, city: "New York City" };
+    }
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Request failed.");
+    if (!Array.isArray(data.results) || !data.results.length) {
+      throw new Error("Nothing usable came back. Check that GEMINI_API_KEY is set correctly (see README).");
+    }
+    rawResults = data.results;
+    document.getElementById("statusArea").innerHTML = "";
+    if (data.truncated) flash(`Response ran long — showing the ${rawResults.length} that finished`);
+    renderResults();
+  } catch (e) {
+    document.getElementById("statusArea").innerHTML = `<div class="err">${e.message}</div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function toCSV(list) {
+  const head = ["name","handle","platform","followers","tier","segment","fit",...DIMS.map(d=>d.key),"verdict","rationale","hook","source","confidence"];
+  const esc = v => `"${String(v ?? "").replace(/"/g,'""')}"`;
+  const rows = list.map(r => [r.name,r.handle,r.platform,r.followers,r.tier,r.segment,r.fit,...DIMS.map(d=>r.scores?.[d.key]??""),verdictFor(r.fit).label,r.rationale,r.hook,r.source,r.confidence].map(esc).join(","));
+  return [head.join(","), ...rows].join("\n");
+}
+
+function renderResults() {
+  const list = rawResults.map(r => ({ ...r, fit: weighted(r.scores) })).sort((a,b) => b.fit - a.fit);
+  const el = document.getElementById("resultsArea");
+  let html = `<div class="rhead"><div class="count">${list.length} creator${list.length!==1?"s":""}, ranked</div>
+    <div class="exports">
+      <button class="chip" onclick="copyHandles()">Copy handles</button>
+      <button class="chip" onclick="copyCSV()">Copy as CSV</button>
+    </div></div><div class="cards">`;
+  list.forEach(r => {
+    const v = verdictFor(r.fit);
+    const isMacro = (r.tier || "").toLowerCase() === "macro";
+    html += `<div class="c">
+      <div class="score">
+        <div class="sbadge" style="background:${v.bg};color:${v.fg}"><span class="n">${r.fit}</span><span class="l">fit</span></div>
+        <span class="verdict" style="color:${v.fg}">${v.label}</span>
+      </div>
+      <div>
+        <div class="crow">
+          <span class="name">${r.name || r.handle || "Unnamed"}</span>
+          ${r.handle && r.handle !== r.name ? `<span class="handle">${r.handle}</span>` : ""}
+          ${r.segment ? `<span class="tag seg">${r.segment}</span>` : ""}
+          ${r.tier ? `<span class="tag${isMacro?" macro":""}">${r.tier}</span>` : ""}
+          ${String(r.confidence||"").toLowerCase()==="low" ? `<span class="lowconf">low confidence</span>` : ""}
+        </div>
+        <div class="meta">${r.platform?`<span>◆ ${r.platform}</span>`:""}${r.followers?`<span>◇ ${r.followers}</span>`:""}</div>
+        <div class="bars">${DIMS.map(d => { const val = Number(r.scores?.[d.key])||0; return `<div class="bar"><div class="bl"><span>${d.label}</span><b>${val}</b></div><div class="track"><div class="fill" style="width:${val}%"></div></div></div>`; }).join("")}</div>
+        ${r.rationale ? `<p class="rat">${r.rationale}</p>` : ""}
+        ${r.hook ? `<div class="hook"><b>Outreach angle:</b> ${r.hook}</div>` : ""}
+        ${isMacro ? `<div class="flag">Macro creator — treat as a reach/credibility play, not a booking bet.</div>` : ""}
+        ${r.source ? `<div class="src"><a href="${r.source}" target="_blank">Where this came from ↗</a></div>` : ""}
+      </div>
+    </div>`;
+  });
+  html += "</div>";
+  el.innerHTML = html;
+  window._lastList = list;
+}
+function copyHandles() { navigator.clipboard.writeText(window._lastList.map(r=>r.handle||r.name).filter(Boolean).join("\n")); flash("Handles copied"); }
+function copyCSV() { navigator.clipboard.writeText(toCSV(window._lastList)); flash("CSV copied — paste into a sheet"); }
+
+renderSegChips();
+renderWeights();
+</script>
+</body>
+</html>
