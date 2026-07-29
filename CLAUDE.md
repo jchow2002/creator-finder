@@ -50,10 +50,17 @@ public/index.html  →  server.js (/api/discover, /api/score)  →  Gemini API (
                                                                     POST /v1beta/interactions, tools:[{type:"google_search"}]
 ```
 
-No second local process required (unlike the earlier OmniRoute-based
-design) — this is why it can deploy to a plain Node host like Render or
-Railway, not just run on the founder's own machine. `render.yaml` at the
-repo root configures that deploy.
+No second local process required — this is why it can deploy to a plain
+Node host like Render or Railway, not just run on the founder's own
+machine. `render.yaml` at the repo root configures that deploy.
+
+`requestsThisSession` (in-memory counter in `server.js`, surfaced via
+`/api/status` and in each `/api/discover`/`/api/score` response) is a rough
+local tally, NOT real Gemini quota — the API doesn't expose remaining
+quota, so this just counts calls since the process last started and resets
+on every restart/redeploy. The frontend badge links out to
+`aistudio.google.com/rate-limit` for the real number. Don't present the
+counter as authoritative if you touch this.
 
 ## Files
 
@@ -74,9 +81,9 @@ npm start                            # http://localhost:3000
 ```
 
 Get a free key at https://aistudio.google.com/apikey. No separate process
-needs to be running (unlike the old OmniRoute setup). If no key is found
-(env var unset and no valid `config.json`), the app fails gracefully — clean
-JSON error, not a crash; preserve that behavior in `loadConfig()`.
+needs to be running. If no key is found (env var unset and no valid
+`config.json`), the app fails gracefully — clean JSON error, not a crash;
+preserve that behavior in `loadConfig()`.
 
 ## The scoring rubric (business logic, not just code)
 

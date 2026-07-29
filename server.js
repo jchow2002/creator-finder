@@ -8,8 +8,8 @@
 // https://ai.google.dev/gemini-api/docs/pricing), plenty for this app's
 // usage. Get a free key at https://aistudio.google.com/apikey.
 //
-// No separate local process to run (unlike the old OmniRoute setup), so
-// this deploys cleanly to a free host like Render or Railway — see README.
+// No separate local process to run, so this deploys cleanly to a free host
+// like Render or Railway — see README.
 
 const express = require("express");
 const path = require("path");
@@ -60,7 +60,16 @@ rationale <=22 words. hook = one specific outreach angle <=16 words. source = a 
 // runs its own searches and writes the answer in one round trip, so there's
 // no separate search step to orchestrate here.
 // https://ai.google.dev/gemini-api/docs/google-search
+//
+// requestsThisSession is a rough, in-memory counter only — Gemini's API
+// doesn't expose real remaining-quota data (that's only viewable by logging
+// into https://aistudio.google.com/rate-limit), so this is NOT the same as
+// your actual free-tier usage. It resets to 0 on every restart/redeploy,
+// which on a free Render plan can happen whenever the service spins down
+// from inactivity. Don't present it to the user as authoritative.
 // ---------------------------------------------------------------------------
+let requestsThisSession = 0;
+
 async function geminiGroundedCall(cfg, prompt) {
   const model = cfg.model || "gemini-flash-latest";
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/interactions`, {
@@ -87,7 +96,8 @@ async function geminiGroundedCall(cfg, prompt) {
     .map((c) => c.text)
     .join("");
   const searchedAtAll = steps.some((s) => s.type === "google_search_call");
-  return { text, truncated: data.status && data.status !== "completed", searched: searchedAtAll };
+  requestsThisSession++;
+  return { text, truncated: data.status && data.status !== "completed", searched: searchedAtAll, model };
 }
 
 // Salvage parser: pull complete {...} objects even if the array got cut off,
@@ -126,6 +136,19 @@ function extractJSON(text) {
 // ---------------------------------------------------------------------------
 // Routes
 // ---------------------------------------------------------------------------
+
+// Lets the frontend show which model is configured before any search runs.
+// requestsThisSession is a rough local tally, not real Gemini quota — see
+// the comment above geminiGroundedCall().
+app.get("/api/status", (req, res) => {
+  try {
+    const cfg = loadConfig();
+    res.json({ model: cfg.model || "gemini-flash-latest", requestsThisSession });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post("/api/discover", async (req, res) => {
   try {
     const cfg = loadConfig();
@@ -136,9 +159,9 @@ app.post("/api/discover", async (req, res) => {
 
 ${SCHEMA_INSTRUCTIONS}`;
 
-    const { text, truncated } = await geminiGroundedCall(cfg, prompt);
+    const { text, truncated, model } = await geminiGroundedCall(cfg, prompt);
     const parsed = extractJSON(text);
-    res.json({ results: parsed, truncated });
+    res.json({ results: parsed, truncated, model, requestsThisSession });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
@@ -159,9 +182,9 @@ ${lines.join("\n")}
 
 ${SCHEMA_INSTRUCTIONS}`;
 
-    const { text, truncated } = await geminiGroundedCall(cfg, prompt);
+    const { text, truncated, model } = await geminiGroundedCall(cfg, prompt);
     const parsed = extractJSON(text);
-    res.json({ results: parsed, truncated });
+    res.json({ results: parsed, truncated, model, requestsThisSession });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
