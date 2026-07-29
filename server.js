@@ -86,7 +86,7 @@ async function tavilySearch(cfg, query) {
     const data = await res.json();
     return (data.results || []).map((r) => ({
       title: r.title || "",
-      snippet: (r.content || "").slice(0, 300),
+      snippet: (r.content || "").slice(0, 250),
       url: r.url || "",
     }));
   } catch (e) {
@@ -97,9 +97,15 @@ async function tavilySearch(cfg, query) {
 
 // Caps the total results fed into the prompt regardless of how many
 // segments/creators were searched — some Groq models on the free tier have
-// a tokens-per-minute limit as low as 8K, and with up to 7 segments x 10
-// results each, an uncapped prompt can blow past that on the tighter models.
-const MAX_RESULTS_IN_PROMPT = 24;
+// a tokens-per-minute limit as low as 6-8K, and with up to 7 segments x 10
+// results each, an uncapped prompt can blow past that on the tighter
+// models. 26 results (~250-char snippets) + the prompt template lands
+// around ~2,600 tokens; combined with a 2,000-token output budget for up
+// to 10 creators, that's ~4,600 total — comfortable margin even under the
+// tightest model on this account's free tier (llama-3.1-8b-instant, 6K
+// TPM). If you raise MAX_RESULTS_IN_PROMPT or the creator count further,
+// recheck this math against whatever model is configured.
+const MAX_RESULTS_IN_PROMPT = 26;
 
 function formatResults(allResults) {
   if (!allResults.length) return "(no search results retrieved — score conservatively, mark confidence 'low')";
@@ -136,9 +142,10 @@ async function groqChat(cfg, prompt) {
       messages: [{ role: "user", content: prompt }],
       // Kept modest on purpose — Groq's free tier counts requested max_tokens
       // against the same tokens-per-minute budget as the prompt itself, and
-      // some models cap out at 8K TPM. 1500 is comfortably enough for up to
-      // ~6 creator JSON objects (this app returns at most 4-6 per call).
-      max_tokens: 1500,
+      // some models cap out at 6-8K TPM. 2000 is enough for up to 10 creator
+      // JSON objects (this app's current max) — see the comment above
+      // MAX_RESULTS_IN_PROMPT for the full token-budget math.
+      max_tokens: 2000,
     }),
   });
   if (!res.ok) {
@@ -211,7 +218,7 @@ app.post("/api/discover", async (req, res) => {
     const searchBatches = await Promise.all(queries.map((q) => tavilySearch(cfg, q)));
     const allResults = searchBatches.flat();
 
-    const prompt = `You are a B2B prospecting analyst for an eco-friendly RESIDENTIAL cleaning startup in ${city}. It seeds creators with a free clean in exchange for a post. The real target is the CUSTOMER — affluent, time-poor ${city} professionals — so a creator is only valuable if their audience is that customer. From the SEARCH RESULTS below, identify up to 4 REAL creators across these segments: ${segments.join(", ")}. ${tierNote} Do not gate on follower count; a small creator with a dense local audience can outrank a big one. Only use creators actually present in the search results — do not invent any.
+    const prompt = `You are a B2B prospecting analyst for an eco-friendly RESIDENTIAL cleaning startup in ${city}. It seeds creators with a free clean in exchange for a post. The real target is the CUSTOMER — affluent, time-poor ${city} professionals — so a creator is only valuable if their audience is that customer. From the SEARCH RESULTS below, identify up to 10 REAL creators across these segments: ${segments.join(", ")}. ${tierNote} Do not gate on follower count; a small creator with a dense local audience can outrank a big one. Only use creators actually present in the search results — do not invent any. If fewer than 10 genuinely fit, return fewer rather than padding with weak matches.
 
 SEARCH RESULTS:
 ${formatResults(allResults)}
@@ -232,7 +239,7 @@ app.post("/api/score", async (req, res) => {
     const { list = "", city = "New York City" } = req.body;
     if (!list.trim()) return res.status(400).json({ error: "Paste at least one creator." });
 
-    const lines = list.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 6);
+    const lines = list.split("\n").map((l) => l.trim()).filter(Boolean).slice(0, 10);
     const searchBatches = await Promise.all(lines.map((l) => tavilySearch(cfg, `${l} instagram ${city}`)));
     const allResults = searchBatches.flat();
 

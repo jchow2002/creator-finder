@@ -157,7 +157,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;heigh
   <div class="panel" id="runPanel">
     <div class="run">
       <button class="btn" id="runBtn" onclick="runSearch()">Find creators</button>
-      <span class="hintline" id="runHint">Returns up to 4 ranked candidates</span>
+      <span class="hintline" id="runHint">Returns up to 10 ranked candidates</span>
     </div>
     <div class="note">◔ <span><b>Sourcing:</b> real web search via Tavily, then scored by a free-tier model on Groq. Free-tier model quality varies — treat results as a seed list, verify before outreach, and expect occasional weaker reasoning than a paid model would give.</span></div>
   </div>
@@ -200,7 +200,7 @@ function setMode(m) {
   document.getElementById("discoverPanel").style.display = m === "discover" ? "block" : "none";
   document.getElementById("scorePanel").style.display = m === "score" ? "block" : "none";
   document.getElementById("runBtn").textContent = m === "discover" ? "Find creators" : "Score list";
-  document.getElementById("runHint").textContent = m === "discover" ? "Returns up to 4 ranked candidates" : "Best with ≤ 6 at a time";
+  document.getElementById("runHint").textContent = m === "discover" ? "Returns up to 10 ranked candidates" : "Best with ≤ 10 at a time";
   rawResults = null;
   document.getElementById("resultsArea").innerHTML = "";
   document.getElementById("statusArea").innerHTML = "";
@@ -242,7 +242,7 @@ function resetWeights() { weights = Object.fromEntries(DIMS.map(d => [d.key, d.d
 function weighted(scores) {
   let wsum = 0, tot = 0;
   DIMS.forEach(d => { const w = weights[d.key] || 0; wsum += w; tot += w * (Number(scores?.[d.key]) || 0); });
-  return wsum ? Math.round(tot / wsum) : 0;
+  return wsum ? Math.round(tot / wsum) : null;
 }
 function verdictFor(n) {
   if (n >= 75) return { label: "Hot pick", bg: "var(--hot-soft)", fg: "var(--hot)" };
@@ -315,8 +315,13 @@ function toCSV(list) {
 }
 
 function renderResults() {
-  const list = rawResults.map(r => ({ ...r, fit: weighted(r.scores) })).sort((a,b) => b.fit - a.fit);
   const el = document.getElementById("resultsArea");
+  const allWeightsZero = DIMS.every(d => !weights[d.key]);
+  if (allWeightsZero) {
+    el.innerHTML = `<div class="err">All scoring weights are at 0, so there's nothing to rank against — every creator would show "0" but that's not a real score, just an empty formula. <button class="linkbtn" style="padding:0" onclick="resetWeights()">Reset weights to default</button> to see rankings again.</div>`;
+    return;
+  }
+  const list = rawResults.map(r => ({ ...r, fit: weighted(r.scores) })).sort((a,b) => b.fit - a.fit);
   let html = `<div class="rhead"><div class="count">${list.length} creator${list.length!==1?"s":""}, ranked</div>
     <div class="exports">
       <button class="chip" onclick="copyHandles()">Copy handles</button>
