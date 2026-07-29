@@ -77,7 +77,7 @@ async function tavilySearch(cfg, query) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${cfg.tavilyApiKey}`,
       },
-      body: JSON.stringify({ query, search_depth: "basic", max_results: 5 }),
+      body: JSON.stringify({ query, search_depth: "basic", max_results: 10 }),
     });
     if (!res.ok) {
       console.warn(`[search] "${query}" failed: HTTP ${res.status}`);

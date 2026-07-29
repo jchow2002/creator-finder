@@ -321,6 +321,7 @@ function renderResults() {
     <div class="exports">
       <button class="chip" onclick="copyHandles()">Copy handles</button>
       <button class="chip" onclick="copyCSV()">Copy as CSV</button>
+      <button class="chip" onclick="downloadCSV()">Download CSV</button>
     </div></div><div class="cards">`;
   list.forEach(r => {
     const v = verdictFor(r.fit);
@@ -353,6 +354,18 @@ function renderResults() {
 }
 function copyHandles() { navigator.clipboard.writeText(window._lastList.map(r=>r.handle||r.name).filter(Boolean).join("\n")); flash("Handles copied"); }
 function copyCSV() { navigator.clipboard.writeText(toCSV(window._lastList)); flash("CSV copied — paste into a sheet"); }
+function downloadCSV() {
+  const blob = new Blob([toCSV(window._lastList)], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `creator-finder-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  flash("CSV downloaded");
+}
 
 renderSegChips();
 renderWeights();
