@@ -86,7 +86,7 @@ async function tavilySearch(cfg, query) {
     const data = await res.json();
     return (data.results || []).map((r) => ({
       title: r.title || "",
-      snippet: r.content || "",
+      snippet: (r.content || "").slice(0, 300),
       url: r.url || "",
     }));
   } catch (e) {
@@ -95,9 +95,16 @@ async function tavilySearch(cfg, query) {
   }
 }
 
+// Caps the total results fed into the prompt regardless of how many
+// segments/creators were searched — some Groq models on the free tier have
+// a tokens-per-minute limit as low as 8K, and with up to 7 segments x 10
+// results each, an uncapped prompt can blow past that on the tighter models.
+const MAX_RESULTS_IN_PROMPT = 24;
+
 function formatResults(allResults) {
   if (!allResults.length) return "(no search results retrieved — score conservatively, mark confidence 'low')";
   return allResults
+    .slice(0, MAX_RESULTS_IN_PROMPT)
     .map((r, i) => `[${i + 1}] ${r.title}\n${r.snippet}\nURL: ${r.url}`)
     .join("\n\n");
 }
@@ -127,7 +134,11 @@ async function groqChat(cfg, prompt) {
     body: JSON.stringify({
       model,
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 3000,
+      // Kept modest on purpose — Groq's free tier counts requested max_tokens
+      // against the same tokens-per-minute budget as the prompt itself, and
+      // some models cap out at 8K TPM. 1500 is comfortably enough for up to
+      // ~6 creator JSON objects (this app returns at most 4-6 per call).
+      max_tokens: 1500,
     }),
   });
   if (!res.ok) {
