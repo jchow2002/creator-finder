@@ -1,4 +1,5 @@
 {
-  "geminiApiKey": "PASTE_YOUR_GEMINI_API_KEY_HERE",
-  "model": "gemini-3.5-flash-lite"
+  "groqApiKey": "PASTE_YOUR_GROQ_API_KEY_HERE",
+  "tavilyApiKey": "PASTE_YOUR_TAVILY_API_KEY_HERE",
+  "model": "llama-3.3-70b-versatile"
 }

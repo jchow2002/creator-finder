@@ -1,10 +1,11 @@
 # Creator Finder
 
 Finds and ranks Instagram creators worth seeding with a free clean, in
-exchange for a post. Powered by Google's Gemini API — it has a free tier,
-and it can search the web itself (no separate search service needed). No
-Anthropic key, no monthly cost, as long as you stay within Gemini's free
-quota.
+exchange for a post. Powered by two free services: **Tavily** for web
+search and **Groq** for scoring. No Anthropic key, no monthly cost, and
+neither provider requires a credit card for their free tier (unlike
+Google's Gemini Search grounding, which needs a linked billing account
+even to unlock its free allowance — that's why this app doesn't use Gemini).
 
 You can run this two ways: **on your own computer**, or **hosted for free**
 so you (or a teammate) can just open a link in any browser. Hosting is the
@@ -15,10 +16,13 @@ sure.
 
 This gives you a real URL, no terminal required after setup.
 
-**1. Get a free Gemini API key.**
-Go to https://aistudio.google.com/apikey, sign in with a Google account,
-and create an API key. Copy it somewhere safe — you'll paste it once into
-the hosting dashboard, never into any file you commit to GitHub.
+**1. Get two free API keys — neither needs a credit card.**
+- Groq (scoring): go to https://console.groq.com/keys, sign up, create a key.
+- Tavily (search): go to https://app.tavily.com, sign up, copy your key from
+  the dashboard.
+
+Copy both somewhere safe — you'll paste them once into the hosting
+dashboard, never into any file you commit to GitHub.
 
 **2. Put this project on GitHub.**
 If it isn't already, create a new (private is fine) GitHub repository and
@@ -30,8 +34,9 @@ push this folder to it.
 - Render should auto-detect the settings from `render.yaml` in this repo
   (build command `npm install`, start command `npm start`). If it doesn't
   auto-detect, set those manually.
-- Under **Environment**, add a variable: `GEMINI_API_KEY` = the key from
-  step 1.
+- Under **Environment**, add two variables:
+  - `GROQ_API_KEY` = your Groq key
+  - `TAVILY_API_KEY` = your Tavily key
 - Click **Create Web Service**. Render gives you a URL like
   `https://creator-finder.onrender.com` — that's the link you share.
 
@@ -45,8 +50,8 @@ normal, not a bug.
 **1. Install Node.js** (if you don't have it): https://nodejs.org — get the
 "LTS" version.
 
-**2. Get a free Gemini API key**, same as step 1 above:
-https://aistudio.google.com/apikey
+**2. Get free API keys**, same as step 1 above:
+https://console.groq.com/keys and https://app.tavily.com
 
 **3. Install this app's dependencies** (in a terminal, in this folder):
 ```bash
@@ -57,7 +62,7 @@ npm install
 ```bash
 cp config.example.json config.json
 ```
-Open `config.json` and paste your API key into `geminiApiKey`.
+Open `config.json` and paste your keys into `groqApiKey` and `tavilyApiKey`.
 
 **5. Run it:**
 ```bash
@@ -65,43 +70,34 @@ npm start
 ```
 Open `http://localhost:3000` in your browser.
 
-`config.json` holds a real secret — it's already excluded from git via
-`.gitignore`, so it's safe to leave in this folder. Never paste your key
+`config.json` holds real secrets — it's already excluded from git via
+`.gitignore`, so it's safe to leave in this folder. Never paste your keys
 directly into `public/index.html` or any file you commit.
 
 ## What to expect honestly
 
-- **Quality is good but not Claude-level.** Gemini's free tier is solid for
-  this kind of task, but expect occasional messy output or a run that
-  needs a retry.
-- **The free tier is tighter than it sounds.** The binding limit isn't a
-  generous monthly number — it's a small per-model daily/per-minute cap.
-  This app defaults to `gemini-3.5-flash-lite`, chosen specifically because
-  it had the best free-tier daily budget available (**15 requests/minute,
-  500 requests/day** on a typical free account) — the non-Lite flash
-  models cap out around 20 requests/day, which is easy to burn through in
-  one testing session. Every Discover or Score click uses one request, so
-  500/day is shared across everyone using the deployed link. Check your
-  real numbers anytime at https://aistudio.google.com/rate-limit (sign in
-  with the same Google account you made the API key with). If you hit the
-  daily cap, it resets the next day — no fix needed, just wait.
-- **Not every model Google lists is actually usable on your account.**
-  Many show `0/0` on that rate-limit page, meaning zero free quota —
-  calling one of those fails immediately, every time, regardless of how
-  the model is marketed. If you ever change `GEMINI_MODEL` / the `model`
-  field in `config.json`, check the rate-limit dashboard first to confirm
-  it shows a real (nonzero) limit before assuming the name works.
+- **Quality is good but not Claude-level.** Groq's free-tier models are
+  solid for this kind of task, but expect occasional messy output or a run
+  that needs a retry.
+- **Free tiers are real but finite.** Groq's `llama-3.3-70b-versatile` free
+  tier is generous (roughly 1,000 requests/minute, 300K tokens/minute as of
+  this writing — check your real numbers at
+  https://console.groq.com/settings/limits). Tavily's free tier covers a
+  solid number of searches per month before it asks you to upgrade — check
+  your usage at https://app.tavily.com. Every Discover/Score click uses one
+  Groq call and a handful of Tavily searches (one per segment or per
+  creator pasted).
 - **This is still a seed list, not verified audience data.** The "local
   audience" score is the model's estimate from what it finds via search,
   not real Instagram Insights data.
 
 ## Files in this folder
 
-- `server.js` — the backend: calls the Gemini API with Google Search
-  grounding turned on, so search and scoring happen in one request.
+- `server.js` — the backend: searches via Tavily, builds the scoring
+  prompt, calls Groq, parses the result.
 - `public/index.html` — the frontend UI (segments, weight sliders, ranked
   cards). No build step — plain HTML/CSS/JS.
-- `config.example.json` → copy to `config.json` and fill in your key (for
-  local runs only — hosted deploys use the `GEMINI_API_KEY` environment
-  variable instead).
+- `config.example.json` → copy to `config.json` and fill in your keys (for
+  local runs only — hosted deploys use the `GROQ_API_KEY` /
+  `TAVILY_API_KEY` environment variables instead).
 - `render.yaml` — deployment config Render reads automatically.

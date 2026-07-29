@@ -119,7 +119,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;heigh
     <div class="mark">✦</div>
     <div>
       <h1>Creator Finder</h1>
-      <p class="sub">Powered by Gemini's free tier, with built-in Google Search grounding — no Claude usage spent. Tune the weights and the ranking re-sorts live.</p>
+      <p class="sub">Powered by Tavily search + Groq's free tier — no Claude usage spent. Tune the weights and the ranking re-sorts live.</p>
       <div class="modelbadge" id="modelBadge" style="display:none"><span class="dot"></span><span id="modelBadgeText"></span></div>
     </div>
   </div>
@@ -159,7 +159,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;heigh
       <button class="btn" id="runBtn" onclick="runSearch()">Find creators</button>
       <span class="hintline" id="runHint">Returns up to 4 ranked candidates</span>
     </div>
-    <div class="note">◔ <span><b>Sourcing:</b> real web search via Gemini's Google Search grounding, scored in the same pass. Still a free-tier model — treat results as a seed list, verify before outreach, and expect occasional weaker reasoning than a paid model would give.</span></div>
+    <div class="note">◔ <span><b>Sourcing:</b> real web search via Tavily, then scored by a free-tier model on Groq. Free-tier model quality varies — treat results as a seed list, verify before outreach, and expect occasional weaker reasoning than a paid model would give.</span></div>
   </div>
 
   <div class="panel">
@@ -261,7 +261,7 @@ function updateModelBadge(model, requestsThisSession) {
   const badge = document.getElementById("modelBadge");
   const text = document.getElementById("modelBadgeText");
   const count = typeof requestsThisSession === "number" ? ` · ${requestsThisSession} request${requestsThisSession !== 1 ? "s" : ""} this session` : "";
-  text.innerHTML = `${model}${count} · <a href="https://aistudio.google.com/rate-limit" target="_blank">check real usage ↗</a>`;
+  text.innerHTML = `${model}${count} · <a href="https://console.groq.com/settings/limits" target="_blank">check real usage ↗</a>`;
   badge.style.display = "inline-flex";
 }
 async function loadStatus() {
@@ -294,7 +294,7 @@ async function runSearch() {
     if (!res.ok) throw new Error(data.error || "Request failed.");
     updateModelBadge(data.model, data.requestsThisSession);
     if (!Array.isArray(data.results) || !data.results.length) {
-      throw new Error("Nothing usable came back. Check that GEMINI_API_KEY is set correctly (see README).");
+      throw new Error("Nothing usable came back. Check that GROQ_API_KEY and TAVILY_API_KEY are set correctly (see README).");
     }
     rawResults = data.results;
     document.getElementById("statusArea").innerHTML = "";

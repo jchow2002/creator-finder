@@ -26,28 +26,34 @@ sliders, so re-weighting re-ranks instantly with no new API call.
   HTML/CSS/JS, not React. The person running this is a non-technical
   first-time founder — `npm install && npm start` needs to be the entire
   setup. Don't reintroduce a bundler/JSX pipeline without a strong reason.
-- **Search and scoring are one call, on purpose.** Gemini's `google_search`
-  tool lets the model decide when to search and write the answer in the
-  same round trip (`POST /v1beta/interactions`) — there's no separate
-  search step to orchestrate in `server.js` anymore. If this ever moves to
-  a provider without that kind of built-in grounding, that's when a
-  separate search step would come back.
+- **Search and chat are separate calls, again, on purpose.** This app tried
+  Gemini's built-in `google_search` grounding tool first (one call for
+  search+scoring) — but that returned HTTP 429 on every call on a fresh
+  account with no billing linked, even though the base text-generation
+  quota was fine. Rather than ask the founder to add a credit card, it went
+  back to two standalone free services with no billing requirement: Tavily
+  for search, Groq for scoring. `server.js` runs the searches itself, then
+  hands results to the model as plain context. If a future provider offers
+  genuinely free (no-billing) built-in search, collapsing back to one call
+  is reasonable — but verify the billing requirement first, not just the
+  advertised free quota.
 - **The JSON parser salvages partial output, on purpose.** Free-tier models
   are weaker and slower than Claude at strict-format compliance, and can get
   cut off. `extractJSON()` in `server.js` scans for complete `{...}` objects
   even if the outer array is truncated, so a partial response still returns
   usable creators instead of failing the whole batch. Keep this behavior
   when touching that function.
-- **The API key never reaches the browser.** `server.js` is the only thing
-  that holds the Gemini key (from `GEMINI_API_KEY` env var or `config.json`);
-  the frontend only ever calls this app's own `/api/*` routes. Don't add a
-  fetch straight from `public/index.html` to the Gemini API.
+- **API keys never reach the browser.** `server.js` is the only thing that
+  holds the Groq/Tavily keys (from `GROQ_API_KEY`/`TAVILY_API_KEY` env vars
+  or `config.json`); the frontend only ever calls this app's own `/api/*`
+  routes. Don't add a fetch straight from `public/index.html` to Groq or
+  Tavily.
 
 ## Architecture
 
 ```
-public/index.html  →  server.js (/api/discover, /api/score)  →  Gemini API (generativelanguage.googleapis.com)
-                                                                    POST /v1beta/interactions, tools:[{type:"google_search"}]
+public/index.html  →  server.js (/api/discover, /api/score)  →  Tavily (api.tavily.com/search)
+                                                                →  Groq   (api.groq.com/openai/v1/chat/completions)
 ```
 
 No second local process required — this is why it can deploy to a plain
@@ -56,34 +62,35 @@ machine. `render.yaml` at the repo root configures that deploy.
 
 `requestsThisSession` (in-memory counter in `server.js`, surfaced via
 `/api/status` and in each `/api/discover`/`/api/score` response) is a rough
-local tally, NOT real Gemini quota — the API doesn't expose remaining
-quota, so this just counts calls since the process last started and resets
-on every restart/redeploy. The frontend badge links out to
-`aistudio.google.com/rate-limit` for the real number. Don't present the
-counter as authoritative if you touch this.
+local tally, NOT real provider quota — neither Groq nor Tavily expose
+remaining-quota data over the API, so this just counts Groq calls since the
+process last started and resets on every restart/redeploy. The frontend
+badge links out to `console.groq.com/settings/limits` for the real number.
+Don't present the counter as authoritative if you touch this.
 
 ## Files
 
 | File | Purpose |
 |---|---|
-| `server.js` | Express backend. Loads config (env var or `config.json`), calls the Gemini API with search grounding on, parses the result. |
+| `server.js` | Express backend. Loads config (env vars or `config.json`), searches via Tavily, builds the scoring prompt, calls Groq, parses the result. |
 | `public/index.html` | Entire frontend — UI, weight sliders, ranking math, rendering. Self-contained, no imports beyond a Google Fonts `@import`. |
-| `config.example.json` → `config.json` | `geminiApiKey`, `model`. `config.json` is user-specific, gitignored — local-run convenience only. Hosted deploys use the `GEMINI_API_KEY` env var instead (set in the host's dashboard), which `loadConfig()` checks first. |
-| `render.yaml` | Render deploy config — build/start commands, declares `GEMINI_API_KEY` as a required env var. |
+| `config.example.json` → `config.json` | `groqApiKey`, `tavilyApiKey`, `model`. `config.json` is user-specific, gitignored — local-run convenience only. Hosted deploys use the `GROQ_API_KEY`/`TAVILY_API_KEY` env vars instead (set in the host's dashboard), which `loadConfig()` checks first. |
+| `render.yaml` | Render deploy config — build/start commands, declares `GROQ_API_KEY` and `TAVILY_API_KEY` as required env vars. |
 | `README.md` | Setup instructions written for the non-technical founder, not for a developer. Keep that audience in mind if editing it. |
 
 ## Running it locally
 
 ```bash
 npm install
-cp config.example.json config.json   # then paste in a real Gemini API key
+cp config.example.json config.json   # then paste in real Groq + Tavily keys
 npm start                            # http://localhost:3000
 ```
 
-Get a free key at https://aistudio.google.com/apikey. No separate process
-needs to be running. If no key is found (env var unset and no valid
-`config.json`), the app fails gracefully — clean JSON error, not a crash;
-preserve that behavior in `loadConfig()`.
+Get free keys at https://console.groq.com/keys and https://app.tavily.com —
+neither requires a linked billing account. No separate process needs to be
+running. If no keys are found (env vars unset and no valid `config.json`),
+the app fails gracefully — clean JSON error, not a crash; preserve that
+behavior in `loadConfig()`.
 
 ## The scoring rubric (business logic, not just code)
 
@@ -102,23 +109,37 @@ flagged as such in the UI. Don't quietly change them without flagging it
 back to the user; they're waiting on real booking-conversion data from the
 founder to recalibrate for real.
 
+## Provider history (why Gemini isn't used, if it comes up again)
+
+Tried three configurations in order, all discovered by actually deploying
+and hitting real errors, not by reading docs alone:
+1. `gemini-2.5-flash` via plain chat completions through a third-party
+   router (OmniRoute) — abandoned because it required the founder to run a
+   second local process, which doesn't work on a hosted deploy at all.
+2. Gemini's native API with `google_search` grounding, one call for
+   search+scoring — `gemini-2.5-flash` 404'd ("no longer available to new
+   users"), then `gemini-flash-latest` 429'd on its very first call
+   (resolved to a model with zero account quota), then `gemini-3-flash` and
+   `gemini-3.5-flash-lite` both 429'd on every call despite confirmed
+   nonzero *text* quota on https://aistudio.google.com/rate-limit — the
+   `google_search` tool specifically appears to require a linked billing
+   account, separate from the base model's free quota.
+3. **Current: Tavily (search) + Groq (scoring), two separate calls.**
+   Neither requires billing to be linked for their free tier. This is the
+   setup actually in `server.js` now.
+
+If someone proposes moving back to Gemini, the billing-for-grounding issue
+needs to be resolved first (or accepted, with a spend cap), not just the
+model name swapped again.
+
 ## Known gaps / likely next work
 
 - No automated tests yet. `server.js` has been manually boot-tested
-  (serves the frontend, fails gracefully with no Gemini key configured) but
-  not yet exercised end-to-end against a real Gemini call — the first two
-  live attempts both failed before reaching the parser: `gemini-2.5-flash`
-  404'd ("no longer available to new users"), then the `gemini-flash-latest`
-  alias 429'd on its very first call because it silently resolved to a
-  model with zero quota on this account. Confirmed the fix by checking
-  https://aistudio.google.com/rate-limit directly rather than trusting
-  Google's docs or model-name conventions — that dashboard is the only
-  reliable source for which models actually have nonzero quota on a given
-  account. The `/v1beta/interactions` response-parsing logic in
-  `geminiGroundedCall()` (which step type holds the text, where citations
-  live) is still based on documented shape, not a confirmed live response —
-  if parsing misbehaves once a call actually succeeds, log the raw response
-  body first.
+  (serves the frontend, fails gracefully with no keys configured) but not
+  yet exercised end-to-end against real Groq/Tavily calls with live keys —
+  confirm the first live Discover/Score run actually returns usable
+  results, and check the raw Groq response shape if `extractJSON()`
+  produces nothing.
 - No persistence — every run is stateless; nothing is saved between
   sessions. A "saved shortlist" or pipeline-tracking view (DM'd → booked →
   posted) has been discussed as a possible future addition but isn't built.
